@@ -24,8 +24,6 @@ This document records the verified project work and current implementation statu
 5. Custom CNN
 6. MobileNetV2
 
-The final implementation must compare six individual models and each member must demonstrate/evaluate at least one model.
-
 ## 2. Progress Review I → Final Consistency
 
 | Member | Progress I contribution | Final pipeline use |
@@ -43,11 +41,7 @@ The final pipeline does not blindly chain all notebooks together. Each contribut
 
 ### Original dataset
 - Total images: **5,932**
-- Original class counts:
-  - Bacterialblight: 1,584
-  - Blast: 1,440
-  - Brownspot: 1,600
-  - Tungro: 1,308
+- Original class counts: Bacterialblight 1,584; Blast 1,440; Brownspot 1,600; Tungro 1,308
 - Corrupted/unreadable images: **0**
 
 ### Exact duplicate analysis
@@ -56,11 +50,7 @@ The final pipeline does not blindly chain all notebooks together. Each contribut
 - Images involved in exact duplicates: **2,234**
 - Redundant duplicate files: **1,138**
 - Cross-class exact duplicate groups: **0**
-
-Duplicate group sizes:
-- Size 2: 1,078 groups
-- Size 3: 6 groups
-- Size 5: 12 groups
+- Duplicate groups: size 2 = 1,078; size 3 = 6; size 5 = 12
 
 The raw ZIP remains unchanged. One representative per exact-hash group is retained for modelling.
 
@@ -85,10 +75,7 @@ A single stratified split is reused across all six models:
 | Testing | **720** |
 | **Total** | **4,794** |
 
-Leakage checks:
-- Train–Validation overlap: **0**
-- Train–Test overlap: **0**
-- Validation–Test overlap: **0**
+Leakage checks: Train–Validation 0; Train–Test 0; Validation–Test 0.
 
 Class mapping:
 
@@ -99,74 +86,32 @@ Brownspot       → 2
 Tungro          → 3
 ```
 
-This exact split and mapping should remain unchanged for the final comparison.
-
 ## 5. Final Image Audit
 
-For the 4,794-image modelling dataset:
-- Valid images: **4,794**
-- Corrupted images: **0**
-- All files: JPG
-- Median dimensions: **300 × 300**
-- Most common dimension: **300 × 300** for 3,486 images
-- Channels:
-  - 3-channel: 4,650
-  - 4-channel: 144
-
-All final deep-learning loading converts images to 3-channel RGB.
+For the 4,794-image modelling dataset: valid images **4,794**, corrupted **0**, all JPG; median and most common dimension **300×300** (3,486 images); channels: 3-channel **4,650**, 4-channel **144**. Deep-learning loading converts all images to RGB.
 
 ## 6. Deep-Learning Preprocessing — COMPLETE
 
-Common pipeline:
-
-```text
-Image
- ↓
-RGB conversion
- ↓
-Direct resize to 224 × 224
- ↓
-Training-only augmentation
- ↓
-Model-specific normalization
- ↓
-Batch size 32
- ↓
-Prefetch
-```
-
-Direct resize was selected after visual validation. Black padding and reflection padding were rejected because they introduced artificial borders/reflected patterns.
+Common pipeline: RGB conversion → direct resize to 224×224 → training-only augmentation → model-specific normalization → batch size 32 → prefetch. Direct resize was selected after visual validation; black/reflection padding was rejected due to artificial borders/reflected patterns.
 
 ### Custom CNN
-- Input: 224 × 224 × 3
-- Normalization: [0,255] → [0,1]
+- Input 224×224×3
+- Normalization [0,255] → [0,1]
 - Training augmentation only
-- Validation/test are not augmented
-- Validated batch: (32, 224, 224, 3)
-- Pixel range: 0.0 → 1.0
-- Labels present: 0,1,2,3
+- Validated batch (32,224,224,3), pixel range 0.0–1.0, labels 0–3
 
 ### MobileNetV2
-- Input: 224 × 224 × 3
-- Keras MobileNetV2 preprocessing
-- Approximate range: [-1,1]
+- Input 224×224×3
+- Keras MobileNetV2 preprocessing, approximate range [-1,1]
 - Training augmentation only
-- Validated training batch: (32, 224, 224, 3)
-- Pixel minimum: -1.0
-- Pixel maximum: 0.9997853
-- Validation batch: (32, 224, 224, 3)
-- Labels present: 0,1,2,3
+- Validated training batch (32,224,224,3)
+- Pixel minimum -1.0; maximum 0.9997853
+- Validation batch (32,224,224,3)
 - Visual validation completed successfully
 
-## 7. Classical ML Branch — CURRENT
+## 7. Classical ML Feature Engineering — COMPLETE
 
-The classical branch is being rebuilt directly from the Progress Review I Member 4 feature-engineering notebook.
-
-### Important methodology decision
-
-A temporary 17-feature RGB/HSV/GLCM experiment was tested during development but is **discarded** from the final methodology.
-
-The final classical feature representation is the exact Progress-I 9-feature set:
+A temporary 17-feature RGB/HSV/GLCM experiment was discarded. The final representation is exactly the Progress-I Member 4 9-feature set:
 
 ```python
 feature_cols = [
@@ -182,53 +127,7 @@ feature_cols = [
 ]
 ```
 
-The final notebook uses the later/final feature-engineering functions from Member 4 rather than the earlier experimental lesion-count versions.
-
-## 8. Classical ML Feature Extraction — COMPLETED
-
-The Member 4 feature-engineering pipeline has now been connected to the **4,794 exact-deduplicated images**.
-
-Verified:
-
-```text
-Images used for classical ML: 4794
-Number of labels: 4794
-
-Classes:
-['Bacterialblight', 'Blast', 'Brownspot', 'Tungro']
-```
-
-### Final feature matrix
-
-```text
-Shape: (4794, 9)
-```
-
-### Feature quality
-
-Missing values:
-
-```text
-contrast              0
-homogeneity           0
-energy                0
-correlation           0
-lesion_ratio_final    0
-lesion_count_final    0
-lesion_mean_h         0
-lesion_mean_s         0
-lesion_mean_v         0
-```
-
-Infinite values:
-
-```text
-0
-```
-
-Therefore:
-- **Missing values: 0**
-- **Infinite values: 0**
+Feature extraction was connected to the **4,794** exact-deduplicated images. Final feature matrix: **(4794, 9)**. Missing values: **0**. Infinite values: **0**.
 
 ### Verified feature summary
 
@@ -244,35 +143,22 @@ Therefore:
 | lesion_mean_s | 103.842 | 31.468 | 49.976 | 200.468 |
 | lesion_mean_v | 148.310 | 34.417 | 59.880 | 253.690 |
 
-The high maximum for contrast is not automatically treated as an error. It will be examined in the planned IQR outlier stage.
+## 8. Classical ML Preprocessing — COMPLETE
 
-## 9. Remaining Classical ML Preprocessing
+### Correlation / multicollinearity
 
-Complete these in this order:
+Strong feature pairs using |r| ≥ 0.80:
 
-```text
-9 Progress-I features
-        ↓
-Correlation / multicollinearity analysis
-        ↓
-IQR outlier analysis
-        ↓
-Use the existing stratified train/validation/test split
-        ↓
-Fit StandardScaler on TRAIN ONLY
-        ↓
-Transform validation/test using the fitted scaler
-        ↓
-Validate final feature matrices
-```
+| Feature pair | Correlation |
+|---|---:|
+| contrast ↔ correlation | **-0.834** |
+| homogeneity ↔ energy | **0.862** |
 
-### Correlation
-- Reproduce the Progress-I correlation analysis on the final 9-feature dataset.
-- Identify strongly correlated feature pairs.
-- Do not automatically remove features without justification.
+No automatic feature deletion was performed.
 
-### Outliers
-Use the Progress-I IQR method:
+### IQR outlier analysis
+
+Method:
 
 ```text
 IQR = Q3 - Q1
@@ -280,55 +166,69 @@ Lower bound = Q1 - 1.5 × IQR
 Upper bound = Q3 + 1.5 × IQR
 ```
 
-Outliers should first be analysed. Do not automatically delete genuine disease observations.
+| Feature | Outlier Count | Outlier Percentage |
+|---|---:|---:|
+| contrast | 497 | 10.37% |
+| homogeneity | 0 | 0.00% |
+| energy | 104 | 2.17% |
+| correlation | 577 | 12.04% |
+| lesion_ratio_final | 87 | 1.81% |
+| lesion_count_final | 160 | 3.34% |
+| lesion_mean_h | 2 | 0.04% |
+| lesion_mean_s | 8 | 0.17% |
+| lesion_mean_v | 207 | 4.32% |
+
+Outliers were analysed but not automatically deleted.
+
+### Final feature split
+
+```text
+Training   : (3355, 9)
+Validation : (719, 9)
+Testing    : (720, 9)
+```
+
+Verified class distributions:
+- Training: Bacterialblight 928, Tungro 915, Brownspot 840, Blast 672
+- Validation: Bacterialblight 199, Tungro 196, Brownspot 180, Blast 144
+- Testing: Bacterialblight 199, Tungro 197, Brownspot 180, Blast 144
 
 ### Standardization
-Use StandardScaler:
+
+StandardScaler was fitted on **training data only** and used to transform validation and test data.
 
 ```text
-Training   → fit + transform
-Validation → transform only
-Test       → transform only
+Scaled training   : (3355, 9)
+Scaled validation : (719, 9)
+Scaled test       : (720, 9)
 ```
 
-This avoids data leakage.
+Training feature means are approximately 0 and training standard deviations approximately 1. The classical ML preprocessing pipeline is therefore **COMPLETE**.
 
-## 10. Classical Models After Preprocessing
+## 9. Classical Models — NEXT
 
-Once correlation, outlier analysis and scaling are finalized:
+The next stage is model development using the same established split:
 
 ```text
-Final classical features
+Final preprocessed features
         ↓
- ┌──────┼───────┬───────┐
- ↓      ↓       ↓       ↓
-SVM     RF      DT      MLP
+SVM
+Random Forest
+Decision Tree
+MLP/ANN
 ```
 
-Each model will be tuned and evaluated on the same development split, with the untouched test set reserved for final comparison.
+Each model will be tuned and evaluated using the common train/validation/test split. The 720-image test set remains reserved for final comparison.
 
-## 11. Deep-Learning Models After Classical Branch
+## 10. Deep-Learning Models After Classical Branch
 
-Then train:
+Then train Custom CNN and MobileNetV2 using the already validated image pipelines.
 
-- Custom CNN
-- MobileNetV2
+## 11. Final Six-Model Evaluation
 
-using the already validated image pipelines.
+All six models will ultimately be evaluated on the same **720-image test set** using Accuracy, Precision, Recall, F1-score, Confusion Matrix and Classification Report. No results will be invented; all final numbers must come from actual experiments.
 
-## 12. Final Six-Model Evaluation
-
-All six models will ultimately be evaluated on the same **720-image test set** using:
-- Accuracy
-- Precision
-- Recall
-- F1-score
-- Confusion matrix
-- Classification report
-
-No results will be invented; all final numbers must come from actual experiments.
-
-## 13. Current Exact Status
+## 12. Current Exact Status
 
 ```text
 Dataset audit                         ✅
@@ -337,7 +237,6 @@ Final 4,794-image dataset            ✅
 Class distribution                   ✅
 Stratified split                     ✅
 Leakage checks                       ✅
-
 Image integrity                      ✅
 Dimension/channel audit              ✅
 RGB conversion                       ✅
@@ -345,18 +244,17 @@ RGB conversion                       ✅
 Custom CNN preprocessing             ✅
 MobileNetV2 preprocessing            ✅
 Visual validation                    ✅
-
 Member 4 feature engineering         ✅
 Final 9-feature matrix               ✅
-Feature matrix shape (4794,9)        ✅
-Missing values                       ✅ 0
-Infinite values                      ✅ 0
+Missing values = 0                   ✅
+Infinite values = 0                  ✅
 Feature summary                      ✅
+Correlation analysis                 ✅
+IQR outlier analysis                 ✅
+Feature train/val/test split         ✅
+StandardScaler                       ✅
 
-Correlation analysis                 ⏳ NEXT
-Outlier analysis                     ⏳
-StandardScaler                       ⏳
-SVM                                  ⏳
+SVM                                  ⏳ NEXT
 Random Forest                        ⏳
 Decision Tree                        ⏳
 MLP/ANN                              ⏳
@@ -365,10 +263,8 @@ MobileNetV2                          ⏳
 Final six-model comparison           ⏳
 ```
 
-## 14. Immediate Next Step
+## 13. Immediate Next Step
 
-**Next cell: correlation analysis on the 9 final features.**
+**Start SVM model development and validation.**
 
-Do not return to the discarded 17-feature experiment and do not redesign feature extraction.
-
-The current classical branch is aligned with Progress Review I and is ready for the correlation stage.
+No feature-engineering redesign is required before the SVM stage.
