@@ -3,7 +3,7 @@
 ## Project Progress Log
 
 ### Purpose
-This document records the project work from the beginning of implementation through the current dataset-audit stage. It explains what was done, why it was done, what the code does, and what remains to be completed.
+This document records the project work from the beginning of implementation through the current preprocessing stage. It explains what was done, why it was done, what the code does, and what remains to be completed.
 
 ---
 
@@ -71,7 +71,9 @@ The group completed six individual preprocessing/EDA notebooks for Progress Revi
 | Member 5 | Label encoding and stratified splitting |
 | Member 6 | Data cleaning and duplicate detection |
 
-These notebooks are retained as evidence of individual contributions. A separate master pipeline is being built so the final experiments use one controlled and reproducible preprocessing workflow.
+These notebooks are retained as evidence of individual contributions.
+
+**Important:** these six notebooks are **not six separate preprocessing pipelines that should be blindly chained together**. A controlled master pipeline integrates the relevant contributions while maintaining separate branches for classical ML and image-based deep learning.
 
 ---
 
@@ -155,11 +157,9 @@ from pathlib import Path
 
 EXTRACT_DIR = Path("/content/rice_leaf_dataset")
 
-# Remove an earlier temporary extraction so the run starts clean.
 if EXTRACT_DIR.exists():
     shutil.rmtree(EXTRACT_DIR)
 
-# Extract the unchanged raw ZIP into the Colab workspace.
 with zipfile.ZipFile(DATASET_ZIP, "r") as zip_ref:
     zip_ref.extractall(EXTRACT_DIR)
 
@@ -179,191 +179,338 @@ Tungro
 
 ---
 
-## 7. Dataset Audit — File Scan
+## 7. Initial Dataset Audit
 
-All image files were scanned into a DataFrame:
+All image files were scanned into a DataFrame.
 
-```python
-from pathlib import Path
-from collections import Counter
+### Original dataset counts
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from PIL import Image, UnidentifiedImageError
+- Total image files: **5,932**
+- Brownspot: **1,600**
+- Bacterialblight: **1,584**
+- Blast: **1,440**
+- Tungro: **1,308**
 
-image_extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
+A class-distribution bar chart was also created.
 
-image_records = []
-
-for class_dir in sorted(EXTRACT_DIR.iterdir()):
-    if not class_dir.is_dir():
-        continue
-
-    class_name = class_dir.name
-
-    for image_path in class_dir.rglob("*"):
-        if image_path.is_file() and image_path.suffix.lower() in image_extensions:
-            image_records.append({
-                "image_path": str(image_path),
-                "class_name": class_name
-            })
-
-dataset_df = pd.DataFrame(image_records)
-
-print("Total image files:", len(dataset_df))
-print("\nClass distribution:")
-print(dataset_df["class_name"].value_counts())
-```
-
-### Current observed class counts
-- Brownspot: 1,600
-- Bacterialblight: 1,584
-- Blast: 1,440
-- Tungro: 1,308
-- Total: 5,932
-
-**Why:** This establishes the actual dataset size and class distribution that will be used as the basis for later analysis.
+**Why:** This establishes the actual dataset size and class distribution before preprocessing.
 
 ---
 
-## 8. Class Distribution EDA
+## 8. Initial Image Integrity and Metadata Audit
 
-A bar chart was created:
+The original dataset was opened with Pillow to inspect dimensions and colour modes.
 
-```python
-class_counts = (
-    dataset_df["class_name"]
-    .value_counts()
-    .sort_index()
-)
+### Initial audit result
 
-plt.figure(figsize=(8, 5))
-class_counts.plot(kind="bar")
-
-plt.title("Rice Leaf Disease Class Distribution")
-plt.xlabel("Disease Class")
-plt.ylabel("Number of Images")
-plt.xticks(rotation=0)
-plt.tight_layout()
-plt.show()
-```
-
-**Why:** The chart makes class imbalance/variation visible and will support later discussion of class-wise precision, recall and F1-score.
-
----
-
-## 9. Image Integrity and Metadata Audit
-
-The images were opened with Pillow to collect dimensions and colour modes and to identify unreadable files:
-
-```python
-dimension_records = []
-corrupt_images = []
-
-for _, row in dataset_df.iterrows():
-    image_path = row["image_path"]
-
-    try:
-        with Image.open(image_path) as img:
-            dimension_records.append({
-                "image_path": image_path,
-                "class_name": row["class_name"],
-                "width": img.width,
-                "height": img.height,
-                "mode": img.mode
-            })
-
-    except (UnidentifiedImageError, OSError):
-        corrupt_images.append(image_path)
-
-image_info_df = pd.DataFrame(dimension_records)
-```
-
-### Current observed results
 - Readable images: **5,932**
 - Corrupt/unreadable images: **0**
 - RGB images: **5,776**
 - RGBA images: **156**
 - Most common dimension: **300 × 300** for **4,624** images
-- Other image dimensions are also present.
+- All files inspected in this stage were JPG files.
 
-**Why:** The model input requires consistent image representation, so image mode and dimensions must be audited before resizing/normalisation.
-
----
-
-## 10. Current Project Status
-
-Completed:
-- Project workspace created.
-- Raw dataset stored separately from working data.
-- Google Colab connected to Drive.
-- Dataset ZIP verified.
-- Dataset extracted successfully.
-- Four class folders verified.
-- Class counts verified from the actual dataset.
-- No corrupt/unreadable images found in the current audit.
-- RGB/RGBA variation identified.
-- Image-dimension variation identified.
-
-### Not yet completed in the final pipeline
-- Exact duplicate handling
-- Final train/validation/test split
-- Final feature-engineering branch
-- Correlation analysis on training data only
-- Outlier analysis on training data only
-- Standardisation where required
-- Deep-learning image preprocessing
-- Six model implementations
-- Hyperparameter tuning
-- Cross-validation/validation protocol
-- Final test evaluation
-- Six-model comparison
-- Ethics and bias analysis
-- Final report and viva preparation
+**Why:** Image mode and dimension variation must be understood before constructing the final model input pipeline.
 
 ---
 
-## 11. Planned Final Preprocessing Structure
+# 9. Exact Duplicate Analysis
 
-The final pipeline will integrate the useful work from all six members without forcing every technique into a single incompatible sequence.
+The next stage incorporated Member 6's data-cleaning contribution.
+
+A content-based hash was calculated for each image file. Images with the same hash were treated as exact binary duplicates.
+
+### Results
+
+- **Total unique file hashes:** 4,794
+- **Exact duplicate groups:** 1,096
+- **Images involved in exact duplicates:** 2,234
+- **Exact duplicate groups appearing across multiple classes:** 0
+- **Redundant duplicate files:** 1,138
+
+### Duplicate group-size distribution
+
+| Group size | Number of groups |
+|---:|---:|
+| 2 | 1,078 |
+| 3 | 6 |
+| 5 | 12 |
+
+### Interpretation
+
+The raw dataset contains substantial exact duplication. Because identical images in different train/test subsets could cause data leakage, duplicate handling is performed **before the final split**.
+
+There were **no exact duplicate groups spanning multiple disease classes**, so the duplicate analysis did not identify a direct cross-class labelling conflict.
+
+The raw ZIP remains unchanged. The modelling dataset keeps one representative image for each exact-hash group.
+
+**Important limitation:** SHA-256 identifies exact binary duplicates only. Visually similar images saved differently are not automatically considered duplicates.
+
+---
+
+# 10. Class Distribution After Exact Deduplication
+
+After retaining one representative per exact-hash group, the working dataset contains **4,794 images**.
+
+| Class | Count | Percentage |
+|---|---:|---:|
+| Bacterialblight | 1,326 | 27.66% |
+| Blast | 960 | 20.03% |
+| Brownspot | 1,200 | 25.03% |
+| Tungro | 1,308 | 27.28% |
+| **Total** | **4,794** | **100%** |
+
+### Interpretation
+
+The classes are not perfectly equal, but the distribution is reasonably manageable. Blast is the smallest class at approximately 20%, while Bacterialblight and Tungro are approximately 27%.
+
+The class distribution is retained through stratified splitting so that validation and test sets represent the same class proportions.
+
+---
+
+# 11. Final Stratified Train / Validation / Test Split
+
+The deduplicated dataset was split once using stratification.
+
+### Final split
+
+| Subset | Images |
+|---|---:|
+| Training | **3,355** |
+| Validation | **719** |
+| Testing | **720** |
+| **Total** | **4,794** |
+
+### Class distribution
+
+**Training**
+
+| Class | Count | Percentage |
+|---|---:|---:|
+| Bacterialblight | 928 | 27.66% |
+| Blast | 672 | 20.03% |
+| Brownspot | 840 | 25.04% |
+| Tungro | 915 | 27.27% |
+
+**Validation**
+
+| Class | Count | Percentage |
+|---|---:|---:|
+| Bacterialblight | 199 | 27.68% |
+| Blast | 144 | 20.03% |
+| Brownspot | 180 | 25.03% |
+| Tungro | 196 | 27.26% |
+
+**Test**
+
+| Class | Count | Percentage |
+|---|---:|---:|
+| Bacterialblight | 199 | 27.64% |
+| Blast | 144 | 20.00% |
+| Brownspot | 180 | 25.00% |
+| Tungro | 197 | 27.36% |
+
+### Leakage checks
+
+- Train–Validation overlap: **0**
+- Train–Test overlap: **0**
+- Validation–Test overlap: **0**
+
+**Why:** A single final split is created and reused across the six models so their performance can be compared fairly.
+
+---
+
+# 12. Post-Deduplication Image Audit
+
+A second image audit was performed on the **4,794-image modelling dataset**.
+
+### Integrity
+
+- Total images inspected: **4,794**
+- Valid images: **4,794**
+- Invalid/corrupted images: **0**
+- Image format: **4,794 JPG**
+
+### Width statistics
+
+| Statistic | Width (px) |
+|---|---:|
+| Mean | 315.150 |
+| Standard deviation | 59.051 |
+| Minimum | 209 |
+| Median | 300 |
+| Maximum | 603 |
+
+### Height statistics
+
+| Statistic | Height (px) |
+|---|---:|
+| Mean | 315.101 |
+| Standard deviation | 59.083 |
+| Minimum | 209 |
+| Median | 300 |
+| Maximum | 603 |
+
+### Most common dimensions
+
+**3,486 images are exactly 300 × 300.**
+
+Other dimensions occur in smaller groups, including rectangular images.
+
+### Aspect ratio statistics
+
+| Statistic | Aspect ratio |
+|---|---:|
+| Mean | 1.019 |
+| Standard deviation | 0.202 |
+| Minimum | 0.664 |
+| Median | 1.000 |
+| Maximum | 1.507 |
+
+Using the audit range of **0.75–1.33**, there are **1,153 images with unusual aspect ratios**.
+
+These images are **not automatically treated as corrupted**. Aspect-ratio variation will be handled by the image preprocessing strategy.
+
+### Channel distribution
+
+| Channels | Images |
+|---:|---:|
+| 3 | 4,650 |
+| 4 | 144 |
+
+The final image-loading pipeline will convert images to a consistent **3-channel RGB** representation.
+
+---
+
+# 13. Final Preprocessing Structure
+
+The six members' work will be integrated into one controlled methodology rather than applying every technique sequentially to every image.
 
 ```text
 Raw Dataset
     ↓
 Dataset Audit
     ↓
-Data Cleaning + Exact Duplicate Handling (Member 6)
+Data Cleaning + Exact Duplicate Handling
+(Member 6)
     ↓
-Label Setup + Stratified Split (Member 5)
+Label Setup + One Stratified Split
+(Member 5)
     ↓
- ┌───────────────────────────────┬───────────────────────────────┐
- │ Classical ML Branch           │ Deep Learning Branch           │
- │                               │                                │
- │ Feature Engineering (M4)      │ RGB conversion                 │
- │ Correlation Analysis (M2)     │ Resize                         │
- │ Outlier Analysis (M3)         │ Normalisation                  │
- │ Standardisation (M1)          │ Training augmentation          │
- │                               │                                │
- │ SVM / RF / DT / MLP           │ Custom CNN / MobileNetV2       │
- └───────────────────────────────┴───────────────────────────────┘
+        ┌───────────────────────────────┬───────────────────────────────┐
+        │ Classical ML Branch           │ Deep Learning Branch           │
+        │                               │                                │
+        │ Feature Engineering (M4)      │ RGB conversion                 │
+        │ Correlation Analysis (M2)     │ Aspect-ratio handling          │
+        │ Outlier Analysis (M3)         │ Resize + padding               │
+        │ Standardisation (M1)          │ Model-specific normalisation  │
+        │                               │ Training augmentation          │
+        │ SVM / RF / DT / MLP           │ Custom CNN / MobileNetV2       │
+        └───────────────────────────────┴───────────────────────────────┘
 ```
 
-The final implementation will avoid data leakage: decisions that learn from feature distributions (for example scaling or feature selection) will be fitted using training data and then applied to validation/test data.
+### Why the branches are separate
+
+Standardisation, correlation analysis, outlier analysis and engineered numerical features are appropriate for the classical ML feature representation.
+
+CNN and MobileNetV2 are image-based models and should receive image tensors rather than having tabular preprocessing techniques forced onto the raw image pixels.
+
+This keeps the six-member contributions while maintaining technically appropriate preprocessing for each model family.
 
 ---
 
-## 12. Important Methodology Decisions
+# 14. Leakage-Control Decisions
 
 1. The raw ZIP remains unchanged.
-2. Exact duplicate detection will occur before final splitting to reduce the risk of train/test leakage.
-3. Perceptual-hash and feature-vector similarity will not be used to automatically delete large numbers of potentially valid images without verification.
-4. Correlation and outlier analysis will be applied to engineered numerical features, not treated as direct raw-image operations.
-5. CNN/MobileNetV2 will use image-based preprocessing rather than the handcrafted feature table.
-6. Final numerical results will be generated from actual runs and will not be invented.
+2. Exact duplicates are handled before the final split.
+3. The final stratified split is created once and reused.
+4. Learned transformations such as scaling or feature-selection decisions are fitted using training data and then applied to validation/test data.
+5. Validation and test images will not receive random training augmentation.
+6. The same test set will be reserved for final comparison.
+7. Perceptual-hash or feature-similarity deletion will not be performed automatically without evidence.
+8. CNN/MobileNetV2 will use image-based preprocessing.
+9. Classical ML models will use the appropriate engineered numerical representation.
 
 ---
 
-## 13. Next Step
+# 15. Current Project Status
 
-The next implementation step is **data cleaning and exact duplicate analysis**, incorporating Member 6's Progress Review I contribution into the master pipeline. After that, the clean dataset will be split once and reused consistently across the final model experiments.
+## Completed
+
+- Project workspace created.
+- Raw dataset stored separately from working data.
+- Google Colab connected to Drive.
+- Dataset ZIP verified.
+- Dataset extracted successfully.
+- Four class folders verified.
+- Original class counts verified.
+- Initial image integrity audit completed.
+- Exact duplicate analysis completed.
+- Deduplicated dataset established: **4,794 images**.
+- Post-dedup class distribution calculated.
+- Final stratified train/validation/test split created.
+- Train/validation/test overlap checks completed.
+- Post-dedup image integrity audit completed.
+- Image dimensions and aspect ratios analysed.
+- Channel distribution analysed.
+- Six-member contribution structure documented.
+- Six-model final structure documented.
+
+## Remaining preprocessing work
+
+- Implement final RGB conversion.
+- Implement aspect-ratio-preserving resize/padding.
+- Implement model-specific normalisation.
+- Implement training-only augmentation.
+- Build the TensorFlow input pipeline.
+- Validate tensor shapes and pixel ranges.
+- Visualise original versus preprocessed/augmented samples.
+- Save reproducible preprocessing outputs/configuration.
+
+## Remaining project work
+
+- Implement six final models.
+- Hyperparameter tuning.
+- Model validation/model-selection protocol.
+- Final test evaluation.
+- Accuracy, precision, recall and F1-score.
+- Confusion matrices.
+- Classification reports.
+- Six-model comparison.
+- Overfitting/generalisation analysis.
+- Bias, ethics and limitations.
+- Final report.
+- Final presentation.
+- Viva preparation.
+- AI usage declaration.
+
+---
+
+# 16. Next Step
+
+The immediate next step is to complete the **final image preprocessing pipeline**:
+
+```text
+Deduplicated images
+        ↓
+Train / Validation / Test split
+        ↓
+RGB conversion
+        ↓
+Aspect-ratio-preserving resize + padding
+        ↓
+224 × 224 × 3
+        ↓
+Training augmentation
+(training only)
+        ↓
+Model-specific normalisation
+        ↓
+Batching + prefetching
+        ↓
+Tensor / visual validation
+        ↓
+Model training
+```
+
+**No final model training should begin until this preprocessing pipeline has been validated.**
