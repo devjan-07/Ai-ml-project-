@@ -205,20 +205,89 @@ Scaled test       : (720, 9)
 
 Training feature means are approximately 0 and training standard deviations approximately 1. The classical ML preprocessing pipeline is therefore **COMPLETE**.
 
-## 9. Classical Models — NEXT
+## 9. Classical Models — IN PROGRESS
 
-The next stage is model development using the same established split:
+The classical model development stage is now underway using the same established 4,794-image dataset, final 9-feature representation, stratified split, and leakage-safe preprocessing.
+
+### 9.1 SVM
+
+**Status:** Complete.
+
+The SVM notebook has been completed with baseline training, hyperparameter tuning, cross-validation, validation evaluation, final test evaluation, confusion matrix, classification report, and results recording.
+
+> SVM numerical results are retained in the completed SVM notebook and should be used as the source of truth for the final six-model comparison.
+
+### 9.2 Random Forest
+
+**Status:** Complete.
+
+Notebook: `02_Random_Forest.ipynb`
+
+#### Baseline validation
+
+The baseline Random Forest achieved:
+
+| Metric | Validation |
+|---|---:|
+| Accuracy | **0.997218** |
+| Precision | **0.997233** |
+| Recall | **0.997218** |
+| F1-score | **0.997218** |
+
+The baseline validation confusion matrix contained two misclassified images.
+
+#### Hyperparameter tuning
+
+A GridSearchCV search evaluated **24 parameter combinations using 5-fold stratified cross-validation**, resulting in **120 fits**.
+
+Best configuration:
 
 ```text
-Final preprocessed features
-        ↓
-SVM
-Random Forest
-Decision Tree
-MLP/ANN
+n_estimators       = 100
+max_depth          = None
+min_samples_split  = 5
+min_samples_leaf   = 1
 ```
 
-Each model will be tuned and evaluated using the common train/validation/test split. The 720-image test set remains reserved for final comparison.
+Best cross-validation weighted F1-score:
+
+**0.996124**
+
+#### Tuned validation performance
+
+| Metric | Tuned Validation |
+|---|---:|
+| Accuracy | **0.998609** |
+| Precision | **0.998616** |
+| Recall | **0.998609** |
+| F1-score | **0.998608** |
+
+The tuned model improved validation accuracy from **0.997218** to **0.998609**.
+
+The tuned validation confusion matrix contained one misclassification: one Blast image was predicted as Bacterialblight.
+
+#### Final test evaluation
+
+The selected Random Forest was then evaluated once on the previously reserved **720-image test set**.
+
+| Metric | Final Test |
+|---|---:|
+| Accuracy | **0.998611** |
+| Precision | **0.998621** |
+| Recall | **0.998611** |
+| F1-score | **0.998612** |
+
+The final test confusion matrix contained **one misclassification** out of 720 test images: one Tungro image was predicted as Blast.
+
+Therefore, **719/720 test images were correctly classified**, corresponding to **99.8611% accuracy**.
+
+#### Random Forest final record
+
+| Model | CV F1 | Validation Accuracy | Validation Precision | Validation Recall | Validation F1 | Test Accuracy | Test Precision | Test Recall | Test F1 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Random Forest | 0.996124 | 0.998609 | 0.998616 | 0.998609 | 0.998608 | 0.998611 | 0.998621 | 0.998611 | 0.998612 |
+
+The Random Forest model is therefore **complete**. Its final result will be compared with the other five models only after all six models have been evaluated.
 
 ## 10. Deep-Learning Models After Classical Branch
 
@@ -254,9 +323,9 @@ IQR outlier analysis                 ✅
 Feature train/val/test split         ✅
 StandardScaler                       ✅
 
-SVM                                  ⏳ NEXT
-Random Forest                        ⏳
-Decision Tree                        ⏳
+SVM                                  ✅ COMPLETE
+Random Forest                        ✅ COMPLETE
+Decision Tree                        ⏳ NEXT
 MLP/ANN                              ⏳
 Custom CNN                           ⏳
 MobileNetV2                          ⏳
@@ -265,6 +334,6 @@ Final six-model comparison           ⏳
 
 ## 13. Immediate Next Step
 
-**Start SVM model development and validation.**
+**Start Decision Tree model development.**
 
-No feature-engineering redesign is required before the SVM stage.
+The Decision Tree notebook should use the same established classical-ML data pipeline and fixed train/validation/test split. Hyperparameter tuning and stratified cross-validation must be completed before the final 720-image test evaluation.
