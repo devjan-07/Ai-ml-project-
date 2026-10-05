@@ -122,19 +122,7 @@ The dataset file was successfully found in the expected raw-data directory.
 
 ## 5. ZIP Structure Verification
 
-Before extraction, the ZIP contents were inspected:
-
-```python
-import zipfile
-
-with zipfile.ZipFile(DATASET_ZIP, "r") as zip_ref:
-    files = zip_ref.namelist()
-
-print("Total files/folders inside ZIP:", len(files))
-
-for item in files[:30]:
-    print(item)
-```
+Before extraction, the ZIP contents were inspected.
 
 ### Verified result
 The ZIP contains **5,932 entries**, and the image data is organised into the four expected class folders:
@@ -149,23 +137,7 @@ The ZIP contains **5,932 entries**, and the image data is organised into the fou
 
 ## 6. Dataset Extraction
 
-The ZIP was extracted into Colab temporary storage:
-
-```python
-import shutil
-from pathlib import Path
-
-EXTRACT_DIR = Path("/content/rice_leaf_dataset")
-
-if EXTRACT_DIR.exists():
-    shutil.rmtree(EXTRACT_DIR)
-
-with zipfile.ZipFile(DATASET_ZIP, "r") as zip_ref:
-    zip_ref.extractall(EXTRACT_DIR)
-
-print("Dataset extracted to:")
-print(EXTRACT_DIR)
-```
+The ZIP was extracted into Colab temporary storage.
 
 ### Verified top-level folders
 ```text
@@ -199,7 +171,7 @@ A class-distribution bar chart was also created.
 
 ## 8. Initial Image Integrity and Metadata Audit
 
-The original dataset was opened with Pillow to inspect dimensions and colour modes.
+The original dataset was opened to inspect dimensions and colour modes.
 
 ### Initial audit result
 
@@ -215,8 +187,6 @@ The original dataset was opened with Pillow to inspect dimensions and colour mod
 ---
 
 # 9. Exact Duplicate Analysis
-
-The next stage incorporated Member 6's data-cleaning contribution.
 
 A content-based hash was calculated for each image file. Images with the same hash were treated as exact binary duplicates.
 
@@ -369,7 +339,7 @@ Other dimensions occur in smaller groups, including rectangular images.
 
 Using the audit range of **0.75–1.33**, there are **1,153 images with unusual aspect ratios**.
 
-These images are **not automatically treated as corrupted**. Aspect-ratio variation will be handled by the image preprocessing strategy.
+These images are **not automatically treated as corrupted**. Aspect-ratio variation is handled by the final direct-resize strategy described below.
 
 ### Channel distribution
 
@@ -378,13 +348,13 @@ These images are **not automatically treated as corrupted**. Aspect-ratio variat
 | 3 | 4,650 |
 | 4 | 144 |
 
-The final image-loading pipeline will convert images to a consistent **3-channel RGB** representation.
+The final image-loading pipeline converts images to a consistent **3-channel RGB** representation.
 
 ---
 
-# 13. Final Preprocessing Structure
+# 13. Final Preprocessing Strategy
 
-The six members' work will be integrated into one controlled methodology rather than applying every technique sequentially to every image.
+The six members' work is integrated into one controlled methodology rather than applying every technique sequentially to every image.
 
 ```text
 Raw Dataset
@@ -401,35 +371,91 @@ Label Setup + One Stratified Split
         │ Classical ML Branch           │ Deep Learning Branch           │
         │                               │                                │
         │ Feature Engineering (M4)      │ RGB conversion                 │
-        │ Correlation Analysis (M2)     │ Aspect-ratio handling          │
-        │ Outlier Analysis (M3)         │ Resize + padding               │
-        │ Standardisation (M1)          │ Model-specific normalisation  │
-        │                               │ Training augmentation          │
+        │ Correlation Analysis (M2)     │ Direct resize to 224 × 224    │
+        │ Outlier Analysis (M3)         │ Model-specific normalisation  │
+        │ Standardisation (M1)          │ Training augmentation          │
+        │                               │                                │
         │ SVM / RF / DT / MLP           │ Custom CNN / MobileNetV2       │
         └───────────────────────────────┴───────────────────────────────┘
 ```
 
 ### Why the branches are separate
 
-Standardisation, correlation analysis, outlier analysis and engineered numerical features are appropriate for the classical ML feature representation.
+Standardisation, correlation analysis, outlier analysis and engineered numerical features are appropriate for the **classical ML feature representation**.
 
-CNN and MobileNetV2 are image-based models and should receive image tensors rather than having tabular preprocessing techniques forced onto the raw image pixels.
+CNN and MobileNetV2 are image-based models and receive image tensors rather than having tabular preprocessing techniques forced onto the raw image pixels.
 
-This keeps the six-member contributions while maintaining technically appropriate preprocessing for each model family.
+This preserves the six-member contributions while keeping preprocessing technically appropriate for each model family.
+
+### Important completed deep-learning preprocessing decisions
+
+For both Custom CNN and MobileNetV2:
+- Images are decoded as **3-channel RGB**.
+- Images are resized directly to **224 × 224**.
+- Black padding and reflection padding are **not** used.
+- Training-only augmentation is applied.
+- Validation and test images are not randomly augmented.
+- Input batching uses **batch size 32** with TensorFlow prefetching.
+
+The direct resize decision was chosen after visual validation showed that padding introduced artificial black or reflected patterns. The final validation visualisation showed natural-looking images without those artifacts.
+
+### Custom CNN preprocessing
+
+```text
+224 × 224 × 3
+      ↓
+Pixel values 0–255
+      ↓
+Divide by 255
+      ↓
+[0, 1]
+      ↓
+Training augmentation only
+```
+
+Validated batch result:
+- Shape: **(32, 224, 224, 3)**
+- Pixel range: **0.0 to 1.0**
+- Labels present: **0, 1, 2, 3**
+
+### MobileNetV2 preprocessing
+
+```text
+224 × 224 × 3
+      ↓
+MobileNetV2 preprocessing
+      ↓
+Approximately [-1, 1]
+      ↓
+Training augmentation only
+```
+
+Validated batch result:
+- Shape: **(32, 224, 224, 3)**
+- Label shape: **(32,)**
+- Pixel minimum: **-1.0**
+- Pixel maximum: **0.9997853**
+- Labels present: **0, 1, 2, 3**
+- Validation batch shape: **(32, 224, 224, 3)**
+
+Visual validation of the MobileNetV2 validation batch showed natural-looking images without black padding or reflection artifacts.
 
 ---
 
-# 14. Leakage-Control Decisions
+# 14. Six-Model Preprocessing Plan
 
-1. The raw ZIP remains unchanged.
-2. Exact duplicates are handled before the final split.
-3. The final stratified split is created once and reused.
-4. Learned transformations such as scaling or feature-selection decisions are fitted using training data and then applied to validation/test data.
-5. Validation and test images will not receive random training augmentation.
-6. The same test set will be reserved for final comparison.
-7. Perceptual-hash or feature-similarity deletion will not be performed automatically without evidence.
-8. CNN/MobileNetV2 will use image-based preprocessing.
-9. Classical ML models will use the appropriate engineered numerical representation.
+The final experiment contains six models:
+
+| # | Model | Input representation |
+|---|---|---|
+| 1 | SVM | Classical engineered feature vector |
+| 2 | Random Forest | Same classical feature vector |
+| 3 | Decision Tree | Same classical feature vector |
+| 4 | MLP/ANN | Same classical feature vector, with scaling as appropriate |
+| 5 | Custom CNN | 224 × 224 RGB image tensor |
+| 6 | MobileNetV2 | 224 × 224 RGB image tensor with MobileNetV2 preprocessing |
+
+The four classical models will share a common engineered feature representation so the comparison focuses more fairly on model behaviour. Scaling/standardisation will be applied where appropriate for the chosen model and feature representation, especially for SVM and MLP.
 
 ---
 
@@ -455,17 +481,29 @@ This keeps the six-member contributions while maintaining technically appropriat
 - Channel distribution analysed.
 - Six-member contribution structure documented.
 - Six-model final structure documented.
+- Final RGB image loading implemented.
+- Direct **224 × 224** resizing implemented and visually validated.
+- Custom CNN normalisation and training augmentation validated.
+- MobileNetV2 preprocessing and training augmentation validated.
+- Tensor shapes, label ranges and preprocessing value ranges validated.
+- Validation/test inputs confirmed to remain unaugmented.
 
 ## Remaining preprocessing work
 
-- Implement final RGB conversion.
-- Implement aspect-ratio-preserving resize/padding.
-- Implement model-specific normalisation.
-- Implement training-only augmentation.
-- Build the TensorFlow input pipeline.
-- Validate tensor shapes and pixel ranges.
-- Visualise original versus preprocessed/augmented samples.
-- Save reproducible preprocessing outputs/configuration.
+### Classical ML branch
+- Define the common engineered feature representation.
+- Generate feature vectors from the training data.
+- Perform correlation/multicollinearity checks on engineered features.
+- Perform statistical outlier analysis where appropriate.
+- Decide whether any outliers are genuine observations or data-quality problems; do not remove observations automatically.
+- Fit required standardisation/scaling using training data only.
+- Apply the fitted transformations to validation/test data without refitting.
+- Perform any justified feature-selection step.
+- Validate the final classical feature matrix.
+
+### Deep learning branch
+- Final preprocessing implementation is complete and validated.
+- Ready for model development.
 
 ## Remaining project work
 
@@ -488,29 +526,24 @@ This keeps the six-member contributions while maintaining technically appropriat
 
 # 16. Next Step
 
-The immediate next step is to complete the **final image preprocessing pipeline**:
+The immediate next step is the **classical ML feature-engineering pipeline** for the four remaining models:
 
 ```text
-Deduplicated images
+Deduplicated + split dataset
         ↓
-Train / Validation / Test split
+Feature engineering
         ↓
-RGB conversion
+Correlation / multicollinearity analysis
         ↓
-Aspect-ratio-preserving resize + padding
+Outlier analysis
         ↓
-224 × 224 × 3
+Training-only scaling / standardisation
         ↓
-Training augmentation
-(training only)
+Final feature matrix
         ↓
-Model-specific normalisation
-        ↓
-Batching + prefetching
-        ↓
-Tensor / visual validation
-        ↓
-Model training
+┌──────────┬───────────────┬──────────────┬─────────┐
+│ SVM      │ Random Forest │ Decision Tree│ MLP     │
+└──────────┴───────────────┴──────────────┴─────────┘
 ```
 
-**No final model training should begin until this preprocessing pipeline has been validated.**
+**No final test-set tuning or transformation fitting should use validation/test information.**
