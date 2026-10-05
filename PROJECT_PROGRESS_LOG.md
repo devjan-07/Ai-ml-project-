@@ -2,14 +2,11 @@
 
 ## Project Progress Log
 
-### Purpose
-This document records the project work from the beginning of implementation through the current preprocessing stage. It explains what was done, why it was done, what the code does, and what remains to be completed.
-
----
+This document records the verified project work and current implementation status. The final pipeline is kept consistent with the six Progress Review I notebooks because both Progress I and Final notebooks will be submitted.
 
 ## 1. Project Overview
 
-**Problem:** Multi-class image classification of rice leaf diseases.
+**Problem:** Multi-class classification of rice leaf diseases.
 
 **Classes:**
 - Bacterial Blight
@@ -19,7 +16,7 @@ This document records the project work from the beginning of implementation thro
 
 **Dataset:** Rice Leaf Disease Image Dataset (Kaggle).
 
-**Project direction:** The project will evaluate six individual models, followed by a group comparison. The current model plan is:
+**Final model plan:**
 1. SVM
 2. Random Forest
 3. Decision Tree
@@ -27,200 +24,47 @@ This document records the project work from the beginning of implementation thro
 5. Custom CNN
 6. MobileNetV2
 
-This plan is aligned with the final implementation requirement that each group member implements at least one model and that the group compares six individual models.
+The final implementation must compare six individual models and each member must demonstrate/evaluate at least one model.
 
----
+## 2. Progress Review I → Final Consistency
 
-## 2. Project Environment and Storage
+| Member | Progress I contribution | Final pipeline use |
+|---|---|---|
+| Member 1 | Standardization / scaling | StandardScaler |
+| Member 2 | Correlation / multicollinearity | Correlation analysis |
+| Member 3 | Statistical outliers | IQR outlier analysis |
+| Member 4 | Feature engineering | Final 9-feature representation |
+| Member 5 | Label encoding / stratified split | Class mapping and final split |
+| Member 6 | Data cleaning / duplicate analysis | Exact duplicate handling |
 
-### Software
-The main execution environment is **Google Colab**, using Python and the project libraries required by the assignment:
-- TensorFlow/Keras
-- OpenCV
-- NumPy
-- Pandas
-- Matplotlib
-- Seaborn
-- Scikit-learn
-- Pillow
+The final pipeline does not blindly chain all notebooks together. Each contribution is integrated where appropriate, with separate classical-ML and deep-learning branches.
 
-### Google Drive structure
-```text
-Rice_Leaf_Disease_Project/
-├── 01_Raw_Dataset/
-│   └── rice leaf diseases dataset.zip
-├── 02_Notebooks/
-├── 03_Results/
-└── 04_Report/
-```
+## 3. Dataset Audit and Cleaning
 
-The raw ZIP is kept unchanged as the source copy. The working extraction is performed in Colab temporary storage so the raw source is not modified.
+### Original dataset
+- Total images: **5,932**
+- Original class counts:
+  - Bacterialblight: 1,584
+  - Blast: 1,440
+  - Brownspot: 1,600
+  - Tungro: 1,308
+- Corrupted/unreadable images: **0**
 
----
+### Exact duplicate analysis
+- Unique file hashes: **4,794**
+- Exact duplicate groups: **1,096**
+- Images involved in exact duplicates: **2,234**
+- Redundant duplicate files: **1,138**
+- Cross-class exact duplicate groups: **0**
 
-## 3. Previous Progress Review I Work
+Duplicate group sizes:
+- Size 2: 1,078 groups
+- Size 3: 6 groups
+- Size 5: 12 groups
 
-The group completed six individual preprocessing/EDA notebooks for Progress Review I:
+The raw ZIP remains unchanged. One representative per exact-hash group is retained for modelling.
 
-| Member | Main contribution |
-|---|---|
-| Member 1 | Feature standardization/scaling |
-| Member 2 | Correlation and multicollinearity analysis |
-| Member 3 | Statistical outlier analysis |
-| Member 4 | Feature engineering |
-| Member 5 | Label encoding and stratified splitting |
-| Member 6 | Data cleaning and duplicate detection |
-
-These notebooks are retained as evidence of individual contributions.
-
-**Important:** these six notebooks are **not six separate preprocessing pipelines that should be blindly chained together**. A controlled master pipeline integrates the relevant contributions while maintaining separate branches for classical ML and image-based deep learning.
-
----
-
-## 4. Master Pipeline Setup
-
-A new notebook was created:
-
-`Rice_Leaf_Disease_Final_Pipeline.ipynb`
-
-### Drive connection
-```python
-from google.colab import drive
-
-drive.mount("/content/drive")
-```
-
-**Why:** This mounts the project Google Drive inside Colab so the notebook can read the raw dataset and save results to the shared project folders.
-
-### Project paths
-```python
-from pathlib import Path
-
-PROJECT_DIR = Path(
-    "/content/drive/MyDrive/Rice_Leaf_Disease_Project"
-)
-
-RAW_DIR = PROJECT_DIR / "01_Raw_Dataset"
-NOTEBOOK_DIR = PROJECT_DIR / "02_Notebooks"
-RESULTS_DIR = PROJECT_DIR / "03_Results"
-REPORT_DIR = PROJECT_DIR / "04_Report"
-```
-
-**Why:** Centralising paths makes the notebook easier to reproduce and reduces hard-coded path errors.
-
-### Dataset verification
-```python
-DATASET_ZIP = RAW_DIR / "rice leaf diseases dataset.zip"
-
-print("Dataset exists:", DATASET_ZIP.exists())
-print("Dataset path:", DATASET_ZIP)
-```
-
-The dataset file was successfully found in the expected raw-data directory.
-
----
-
-## 5. ZIP Structure Verification
-
-Before extraction, the ZIP contents were inspected.
-
-### Verified result
-The ZIP contains **5,932 entries**, and the image data is organised into the four expected class folders:
-- `Bacterialblight`
-- `Blast`
-- `Brownspot`
-- `Tungro`
-
-**Why:** We verify the real structure instead of assuming the folder layout before writing preprocessing code.
-
----
-
-## 6. Dataset Extraction
-
-The ZIP was extracted into Colab temporary storage.
-
-### Verified top-level folders
-```text
-Bacterialblight
-Blast
-Brownspot
-Tungro
-```
-
-**Why:** Keeping extraction in `/content` avoids duplicating thousands of image files in Google Drive while preserving the raw ZIP as the project source.
-
----
-
-## 7. Initial Dataset Audit
-
-All image files were scanned into a DataFrame.
-
-### Original dataset counts
-
-- Total image files: **5,932**
-- Brownspot: **1,600**
-- Bacterialblight: **1,584**
-- Blast: **1,440**
-- Tungro: **1,308**
-
-A class-distribution bar chart was also created.
-
-**Why:** This establishes the actual dataset size and class distribution before preprocessing.
-
----
-
-## 8. Initial Image Integrity and Metadata Audit
-
-The original dataset was opened to inspect dimensions and colour modes.
-
-### Initial audit result
-
-- Readable images: **5,932**
-- Corrupt/unreadable images: **0**
-- RGB images: **5,776**
-- RGBA images: **156**
-- Most common dimension: **300 × 300** for **4,624** images
-- All files inspected in this stage were JPG files.
-
-**Why:** Image mode and dimension variation must be understood before constructing the final model input pipeline.
-
----
-
-# 9. Exact Duplicate Analysis
-
-A content-based hash was calculated for each image file. Images with the same hash were treated as exact binary duplicates.
-
-### Results
-
-- **Total unique file hashes:** 4,794
-- **Exact duplicate groups:** 1,096
-- **Images involved in exact duplicates:** 2,234
-- **Exact duplicate groups appearing across multiple classes:** 0
-- **Redundant duplicate files:** 1,138
-
-### Duplicate group-size distribution
-
-| Group size | Number of groups |
-|---:|---:|
-| 2 | 1,078 |
-| 3 | 6 |
-| 5 | 12 |
-
-### Interpretation
-
-The raw dataset contains substantial exact duplication. Because identical images in different train/test subsets could cause data leakage, duplicate handling is performed **before the final split**.
-
-There were **no exact duplicate groups spanning multiple disease classes**, so the duplicate analysis did not identify a direct cross-class labelling conflict.
-
-The raw ZIP remains unchanged. The modelling dataset keeps one representative image for each exact-hash group.
-
-**Important limitation:** SHA-256 identifies exact binary duplicates only. Visually similar images saved differently are not automatically considered duplicates.
-
----
-
-# 10. Class Distribution After Exact Deduplication
-
-After retaining one representative per exact-hash group, the working dataset contains **4,794 images**.
+### Final deduplicated class distribution
 
 | Class | Count | Percentage |
 |---|---:|---:|
@@ -230,19 +74,9 @@ After retaining one representative per exact-hash group, the working dataset con
 | Tungro | 1,308 | 27.28% |
 | **Total** | **4,794** | **100%** |
 
-### Interpretation
+## 4. Final Split
 
-The classes are not perfectly equal, but the distribution is reasonably manageable. Blast is the smallest class at approximately 20%, while Bacterialblight and Tungro are approximately 27%.
-
-The class distribution is retained through stratified splitting so that validation and test sets represent the same class proportions.
-
----
-
-# 11. Final Stratified Train / Validation / Test Split
-
-The deduplicated dataset was split once using stratification.
-
-### Final split
+A single stratified split is reused across all six models:
 
 | Subset | Images |
 |---|---:|
@@ -251,299 +85,290 @@ The deduplicated dataset was split once using stratification.
 | Testing | **720** |
 | **Total** | **4,794** |
 
-### Class distribution
-
-**Training**
-
-| Class | Count | Percentage |
-|---|---:|---:|
-| Bacterialblight | 928 | 27.66% |
-| Blast | 672 | 20.03% |
-| Brownspot | 840 | 25.04% |
-| Tungro | 915 | 27.27% |
-
-**Validation**
-
-| Class | Count | Percentage |
-|---|---:|---:|
-| Bacterialblight | 199 | 27.68% |
-| Blast | 144 | 20.03% |
-| Brownspot | 180 | 25.03% |
-| Tungro | 196 | 27.26% |
-
-**Test**
-
-| Class | Count | Percentage |
-|---|---:|---:|
-| Bacterialblight | 199 | 27.64% |
-| Blast | 144 | 20.00% |
-| Brownspot | 180 | 25.00% |
-| Tungro | 197 | 27.36% |
-
-### Leakage checks
-
+Leakage checks:
 - Train–Validation overlap: **0**
 - Train–Test overlap: **0**
 - Validation–Test overlap: **0**
 
-**Why:** A single final split is created and reused across the six models so their performance can be compared fairly.
+Class mapping:
 
----
+```text
+Bacterialblight → 0
+Blast           → 1
+Brownspot       → 2
+Tungro          → 3
+```
 
-# 12. Post-Deduplication Image Audit
+This exact split and mapping should remain unchanged for the final comparison.
 
-A second image audit was performed on the **4,794-image modelling dataset**.
+## 5. Final Image Audit
 
-### Integrity
-
-- Total images inspected: **4,794**
+For the 4,794-image modelling dataset:
 - Valid images: **4,794**
-- Invalid/corrupted images: **0**
-- Image format: **4,794 JPG**
+- Corrupted images: **0**
+- All files: JPG
+- Median dimensions: **300 × 300**
+- Most common dimension: **300 × 300** for 3,486 images
+- Channels:
+  - 3-channel: 4,650
+  - 4-channel: 144
 
-### Width statistics
+All final deep-learning loading converts images to 3-channel RGB.
 
-| Statistic | Width (px) |
-|---|---:|
-| Mean | 315.150 |
-| Standard deviation | 59.051 |
-| Minimum | 209 |
-| Median | 300 |
-| Maximum | 603 |
+## 6. Deep-Learning Preprocessing — COMPLETE
 
-### Height statistics
-
-| Statistic | Height (px) |
-|---|---:|
-| Mean | 315.101 |
-| Standard deviation | 59.083 |
-| Minimum | 209 |
-| Median | 300 |
-| Maximum | 603 |
-
-### Most common dimensions
-
-**3,486 images are exactly 300 × 300.**
-
-Other dimensions occur in smaller groups, including rectangular images.
-
-### Aspect ratio statistics
-
-| Statistic | Aspect ratio |
-|---|---:|
-| Mean | 1.019 |
-| Standard deviation | 0.202 |
-| Minimum | 0.664 |
-| Median | 1.000 |
-| Maximum | 1.507 |
-
-Using the audit range of **0.75–1.33**, there are **1,153 images with unusual aspect ratios**.
-
-These images are **not automatically treated as corrupted**. Aspect-ratio variation is handled by the final direct-resize strategy described below.
-
-### Channel distribution
-
-| Channels | Images |
-|---:|---:|
-| 3 | 4,650 |
-| 4 | 144 |
-
-The final image-loading pipeline converts images to a consistent **3-channel RGB** representation.
-
----
-
-# 13. Final Preprocessing Strategy
-
-The six members' work is integrated into one controlled methodology rather than applying every technique sequentially to every image.
+Common pipeline:
 
 ```text
-Raw Dataset
-    ↓
-Dataset Audit
-    ↓
-Data Cleaning + Exact Duplicate Handling
-(Member 6)
-    ↓
-Label Setup + One Stratified Split
-(Member 5)
-    ↓
-        ┌───────────────────────────────┬───────────────────────────────┐
-        │ Classical ML Branch           │ Deep Learning Branch           │
-        │                               │                                │
-        │ Feature Engineering (M4)      │ RGB conversion                 │
-        │ Correlation Analysis (M2)     │ Direct resize to 224 × 224    │
-        │ Outlier Analysis (M3)         │ Model-specific normalisation  │
-        │ Standardisation (M1)          │ Training augmentation          │
-        │                               │                                │
-        │ SVM / RF / DT / MLP           │ Custom CNN / MobileNetV2       │
-        └───────────────────────────────┴───────────────────────────────┘
+Image
+ ↓
+RGB conversion
+ ↓
+Direct resize to 224 × 224
+ ↓
+Training-only augmentation
+ ↓
+Model-specific normalization
+ ↓
+Batch size 32
+ ↓
+Prefetch
 ```
 
-### Why the branches are separate
+Direct resize was selected after visual validation. Black padding and reflection padding were rejected because they introduced artificial borders/reflected patterns.
 
-Standardisation, correlation analysis, outlier analysis and engineered numerical features are appropriate for the **classical ML feature representation**.
+### Custom CNN
+- Input: 224 × 224 × 3
+- Normalization: [0,255] → [0,1]
+- Training augmentation only
+- Validation/test are not augmented
+- Validated batch: (32, 224, 224, 3)
+- Pixel range: 0.0 → 1.0
+- Labels present: 0,1,2,3
 
-CNN and MobileNetV2 are image-based models and receive image tensors rather than having tabular preprocessing techniques forced onto the raw image pixels.
+### MobileNetV2
+- Input: 224 × 224 × 3
+- Keras MobileNetV2 preprocessing
+- Approximate range: [-1,1]
+- Training augmentation only
+- Validated training batch: (32, 224, 224, 3)
+- Pixel minimum: -1.0
+- Pixel maximum: 0.9997853
+- Validation batch: (32, 224, 224, 3)
+- Labels present: 0,1,2,3
+- Visual validation completed successfully
 
-This preserves the six-member contributions while keeping preprocessing technically appropriate for each model family.
+## 7. Classical ML Branch — CURRENT
 
-### Important completed deep-learning preprocessing decisions
+The classical branch is being rebuilt directly from the Progress Review I Member 4 feature-engineering notebook.
 
-For both Custom CNN and MobileNetV2:
-- Images are decoded as **3-channel RGB**.
-- Images are resized directly to **224 × 224**.
-- Black padding and reflection padding are **not** used.
-- Training-only augmentation is applied.
-- Validation and test images are not randomly augmented.
-- Input batching uses **batch size 32** with TensorFlow prefetching.
+### Important methodology decision
 
-The direct resize decision was chosen after visual validation showed that padding introduced artificial black or reflected patterns. The final validation visualisation showed natural-looking images without those artifacts.
+A temporary 17-feature RGB/HSV/GLCM experiment was tested during development but is **discarded** from the final methodology.
 
-### Custom CNN preprocessing
+The final classical feature representation is the exact Progress-I 9-feature set:
 
-```text
-224 × 224 × 3
-      ↓
-Pixel values 0–255
-      ↓
-Divide by 255
-      ↓
-[0, 1]
-      ↓
-Training augmentation only
+```python
+feature_cols = [
+    "contrast",
+    "homogeneity",
+    "energy",
+    "correlation",
+    "lesion_ratio_final",
+    "lesion_count_final",
+    "lesion_mean_h",
+    "lesion_mean_s",
+    "lesion_mean_v"
+]
 ```
 
-Validated batch result:
-- Shape: **(32, 224, 224, 3)**
-- Pixel range: **0.0 to 1.0**
-- Labels present: **0, 1, 2, 3**
+The final notebook uses the later/final feature-engineering functions from Member 4 rather than the earlier experimental lesion-count versions.
 
-### MobileNetV2 preprocessing
+## 8. Classical ML Feature Extraction — COMPLETED
+
+The Member 4 feature-engineering pipeline has now been connected to the **4,794 exact-deduplicated images**.
+
+Verified:
 
 ```text
-224 × 224 × 3
-      ↓
-MobileNetV2 preprocessing
-      ↓
-Approximately [-1, 1]
-      ↓
-Training augmentation only
+Images used for classical ML: 4794
+Number of labels: 4794
+
+Classes:
+['Bacterialblight', 'Blast', 'Brownspot', 'Tungro']
 ```
 
-Validated batch result:
-- Shape: **(32, 224, 224, 3)**
-- Label shape: **(32,)**
-- Pixel minimum: **-1.0**
-- Pixel maximum: **0.9997853**
-- Labels present: **0, 1, 2, 3**
-- Validation batch shape: **(32, 224, 224, 3)**
-
-Visual validation of the MobileNetV2 validation batch showed natural-looking images without black padding or reflection artifacts.
-
----
-
-# 14. Six-Model Preprocessing Plan
-
-The final experiment contains six models:
-
-| # | Model | Input representation |
-|---|---|---|
-| 1 | SVM | Classical engineered feature vector |
-| 2 | Random Forest | Same classical feature vector |
-| 3 | Decision Tree | Same classical feature vector |
-| 4 | MLP/ANN | Same classical feature vector, with scaling as appropriate |
-| 5 | Custom CNN | 224 × 224 RGB image tensor |
-| 6 | MobileNetV2 | 224 × 224 RGB image tensor with MobileNetV2 preprocessing |
-
-The four classical models will share a common engineered feature representation so the comparison focuses more fairly on model behaviour. Scaling/standardisation will be applied where appropriate for the chosen model and feature representation, especially for SVM and MLP.
-
----
-
-# 15. Current Project Status
-
-## Completed
-
-- Project workspace created.
-- Raw dataset stored separately from working data.
-- Google Colab connected to Drive.
-- Dataset ZIP verified.
-- Dataset extracted successfully.
-- Four class folders verified.
-- Original class counts verified.
-- Initial image integrity audit completed.
-- Exact duplicate analysis completed.
-- Deduplicated dataset established: **4,794 images**.
-- Post-dedup class distribution calculated.
-- Final stratified train/validation/test split created.
-- Train/validation/test overlap checks completed.
-- Post-dedup image integrity audit completed.
-- Image dimensions and aspect ratios analysed.
-- Channel distribution analysed.
-- Six-member contribution structure documented.
-- Six-model final structure documented.
-- Final RGB image loading implemented.
-- Direct **224 × 224** resizing implemented and visually validated.
-- Custom CNN normalisation and training augmentation validated.
-- MobileNetV2 preprocessing and training augmentation validated.
-- Tensor shapes, label ranges and preprocessing value ranges validated.
-- Validation/test inputs confirmed to remain unaugmented.
-
-## Remaining preprocessing work
-
-### Classical ML branch
-- Define the common engineered feature representation.
-- Generate feature vectors from the training data.
-- Perform correlation/multicollinearity checks on engineered features.
-- Perform statistical outlier analysis where appropriate.
-- Decide whether any outliers are genuine observations or data-quality problems; do not remove observations automatically.
-- Fit required standardisation/scaling using training data only.
-- Apply the fitted transformations to validation/test data without refitting.
-- Perform any justified feature-selection step.
-- Validate the final classical feature matrix.
-
-### Deep learning branch
-- Final preprocessing implementation is complete and validated.
-- Ready for model development.
-
-## Remaining project work
-
-- Implement six final models.
-- Hyperparameter tuning.
-- Model validation/model-selection protocol.
-- Final test evaluation.
-- Accuracy, precision, recall and F1-score.
-- Confusion matrices.
-- Classification reports.
-- Six-model comparison.
-- Overfitting/generalisation analysis.
-- Bias, ethics and limitations.
-- Final report.
-- Final presentation.
-- Viva preparation.
-- AI usage declaration.
-
----
-
-# 16. Next Step
-
-The immediate next step is the **classical ML feature-engineering pipeline** for the four remaining models:
+### Final feature matrix
 
 ```text
-Deduplicated + split dataset
-        ↓
-Feature engineering
+Shape: (4794, 9)
+```
+
+### Feature quality
+
+Missing values:
+
+```text
+contrast              0
+homogeneity           0
+energy                0
+correlation           0
+lesion_ratio_final    0
+lesion_count_final    0
+lesion_mean_h         0
+lesion_mean_s         0
+lesion_mean_v         0
+```
+
+Infinite values:
+
+```text
+0
+```
+
+Therefore:
+- **Missing values: 0**
+- **Infinite values: 0**
+
+### Verified feature summary
+
+| Feature | Mean | Std | Min | Max |
+|---|---:|---:|---:|---:|
+| contrast | 85.592 | 114.675 | 1.534 | 1189.305 |
+| homogeneity | 0.358 | 0.141 | 0.080 | 0.770 |
+| energy | 0.033 | 0.016 | 0.011 | 0.150 |
+| correlation | 0.971 | 0.037 | 0.665 | 1.000 |
+| lesion_ratio_final | 0.157 | 0.148 | 0.001 | 0.652 |
+| lesion_count_final | 7.616 | 6.862 | 0 | 38 |
+| lesion_mean_h | 21.601 | 3.427 | 11.654 | 29.934 |
+| lesion_mean_s | 103.842 | 31.468 | 49.976 | 200.468 |
+| lesion_mean_v | 148.310 | 34.417 | 59.880 | 253.690 |
+
+The high maximum for contrast is not automatically treated as an error. It will be examined in the planned IQR outlier stage.
+
+## 9. Remaining Classical ML Preprocessing
+
+Complete these in this order:
+
+```text
+9 Progress-I features
         ↓
 Correlation / multicollinearity analysis
         ↓
-Outlier analysis
+IQR outlier analysis
         ↓
-Training-only scaling / standardisation
+Use the existing stratified train/validation/test split
         ↓
-Final feature matrix
+Fit StandardScaler on TRAIN ONLY
         ↓
-┌──────────┬───────────────┬──────────────┬─────────┐
-│ SVM      │ Random Forest │ Decision Tree│ MLP     │
-└──────────┴───────────────┴──────────────┴─────────┘
+Transform validation/test using the fitted scaler
+        ↓
+Validate final feature matrices
 ```
 
-**No final test-set tuning or transformation fitting should use validation/test information.**
+### Correlation
+- Reproduce the Progress-I correlation analysis on the final 9-feature dataset.
+- Identify strongly correlated feature pairs.
+- Do not automatically remove features without justification.
+
+### Outliers
+Use the Progress-I IQR method:
+
+```text
+IQR = Q3 - Q1
+Lower bound = Q1 - 1.5 × IQR
+Upper bound = Q3 + 1.5 × IQR
+```
+
+Outliers should first be analysed. Do not automatically delete genuine disease observations.
+
+### Standardization
+Use StandardScaler:
+
+```text
+Training   → fit + transform
+Validation → transform only
+Test       → transform only
+```
+
+This avoids data leakage.
+
+## 10. Classical Models After Preprocessing
+
+Once correlation, outlier analysis and scaling are finalized:
+
+```text
+Final classical features
+        ↓
+ ┌──────┼───────┬───────┐
+ ↓      ↓       ↓       ↓
+SVM     RF      DT      MLP
+```
+
+Each model will be tuned and evaluated on the same development split, with the untouched test set reserved for final comparison.
+
+## 11. Deep-Learning Models After Classical Branch
+
+Then train:
+
+- Custom CNN
+- MobileNetV2
+
+using the already validated image pipelines.
+
+## 12. Final Six-Model Evaluation
+
+All six models will ultimately be evaluated on the same **720-image test set** using:
+- Accuracy
+- Precision
+- Recall
+- F1-score
+- Confusion matrix
+- Classification report
+
+No results will be invented; all final numbers must come from actual experiments.
+
+## 13. Current Exact Status
+
+```text
+Dataset audit                         ✅
+Exact duplicate analysis             ✅
+Final 4,794-image dataset            ✅
+Class distribution                   ✅
+Stratified split                     ✅
+Leakage checks                       ✅
+
+Image integrity                      ✅
+Dimension/channel audit              ✅
+RGB conversion                       ✅
+224×224 resize                       ✅
+Custom CNN preprocessing             ✅
+MobileNetV2 preprocessing            ✅
+Visual validation                    ✅
+
+Member 4 feature engineering         ✅
+Final 9-feature matrix               ✅
+Feature matrix shape (4794,9)        ✅
+Missing values                       ✅ 0
+Infinite values                      ✅ 0
+Feature summary                      ✅
+
+Correlation analysis                 ⏳ NEXT
+Outlier analysis                     ⏳
+StandardScaler                       ⏳
+SVM                                  ⏳
+Random Forest                        ⏳
+Decision Tree                        ⏳
+MLP/ANN                              ⏳
+Custom CNN                           ⏳
+MobileNetV2                          ⏳
+Final six-model comparison           ⏳
+```
+
+## 14. Immediate Next Step
+
+**Next cell: correlation analysis on the 9 final features.**
+
+Do not return to the discarded 17-feature experiment and do not redesign feature extraction.
+
+The current classical branch is aligned with Progress Review I and is ready for the correlation stage.
